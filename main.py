@@ -52,8 +52,8 @@ def parse_args() -> argparse.Namespace:
 
 
 async def main(args: argparse.Namespace):
-    with connect() as c1, connect() as c2:
-        create_tables(c1)
+    async with (await connect() as c1, await connect() as c2):
+        await create_tables(c1)
         t1_event = asyncio.Event()
         t1_event.set()
         t2_event = asyncio.Event()
@@ -94,42 +94,42 @@ async def main(args: argparse.Namespace):
                 t1 = serialization_anomaly_update.T1(c1, isolation_level, t1_event, t2_event)
                 t2 = serialization_anomaly_update.T2(c2, isolation_level, t2_event, t1_event)
 
-        print_account(c1, "BEFORE")
+        await print_account(c1, "BEFORE")
         async with asyncio.TaskGroup() as tg:
             tg.create_task(t1())
             tg.create_task(t2())
-        print_account(c1, "AFTER")
+        await print_account(c1, "AFTER")
 
 
-def connect() -> psycopg.Connection:
-    return psycopg.connect(
+async def connect() -> psycopg.AsyncConnection:
+    return await psycopg.AsyncConnection.connect(
         "postgresql://postgres:a.test_password@localhost:5432/transaction_isolation_test",
         row_factory=dict_row,
         autocommit=True,
     )
 
 
-def create_tables(conn: psycopg.Connection):
-    with conn.cursor() as c:
-        c.execute("drop table if exists account;")
-        c.execute("""
+async def create_tables(conn: psycopg.AsyncConnection):
+    async with conn.cursor() as c:
+        await c.execute("drop table if exists account;")
+        await c.execute("""
             create table account (
                 id serial primary key,
                 balance int not null
             );
         """)
 
-        c.execute("""
+        await c.execute("""
             insert into account (balance) values (67);
             insert into account (balance) values (31);
         """)
 
 
-def print_account(conn: psycopg.Connection, tag: str):
-    with conn.cursor() as cur:
+async def print_account(conn: psycopg.Connection, tag: str):
+    async with conn.cursor() as cur:
         print("DB STATE:", tag)
-        cur.execute("select * from account;")
-        print(format_table(cur.fetchall()))
+        await cur.execute("select * from account;")
+        print(format_table(await cur.fetchall()))
         print()
 
 

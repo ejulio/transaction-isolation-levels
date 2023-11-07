@@ -2,19 +2,19 @@ from abc import ABC, abstractmethod
 from asyncio import Event, wait_for
 from typing import Dict, List
 
-from psycopg import Connection, Cursor, IsolationLevel
+from psycopg import AsyncConnection, AsyncCursor, IsolationLevel
 
 
 class ConcurrentTransactionExample(ABC):
 
-    conn: Connection
+    conn: AsyncConnection
     _isolation_level: IsolationLevel
     _self_event: Event
     _other_event: Event
 
     _global_printer_count: int = 0
 
-    def __init__(self, conn: Connection, level: IsolationLevel, self_event: Event, other_event: Event):
+    def __init__(self, conn: AsyncConnection, level: IsolationLevel, self_event: Event, other_event: Event):
         self.conn = conn
         self._isolation_level = level
         self._self_event = self_event
@@ -31,22 +31,23 @@ class ConcurrentTransactionExample(ABC):
     async def run(self):
         ...
 
-    def begin_transaction_with_isolation_level(self, cursor: Cursor):
-        cursor.execute("begin transaction")
+    async def begin_transaction_with_isolation_level(self, cursor: AsyncCursor):
+        await cursor.execute("begin transaction")
         match self._isolation_level:
             case IsolationLevel.READ_UNCOMMITTED:
-                cursor.execute("set transaction isolation level read uncommitted")
+                await cursor.execute("set transaction isolation level read uncommitted")
             case IsolationLevel.READ_COMMITTED:
-                cursor.execute("set transaction isolation level read committed")
+                await cursor.execute("set transaction isolation level read committed")
             case IsolationLevel.REPEATABLE_READ:
-                cursor.execute("set transaction isolation level repeatable read")
+                await cursor.execute("set transaction isolation level repeatable read")
             case IsolationLevel.SERIALIZABLE:
-                cursor.execute("set transaction isolation level serializable")
+                await cursor.execute("set transaction isolation level serializable")
 
     # syncing helpers
 
     async def _wait(self):
         await self._self_event.wait()
+        self._self_event.clear()
 
     def _done(self):
         self._other_event.set()
