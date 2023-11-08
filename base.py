@@ -1,6 +1,6 @@
 from abc import ABC, abstractmethod
 from asyncio import Event, wait_for
-from typing import Dict, List
+from typing import Any, Awaitable, Dict, List
 
 from psycopg import AsyncConnection, AsyncCursor, IsolationLevel
 
@@ -52,9 +52,12 @@ class ConcurrentTransactionExample(ABC):
     def _done(self):
         self._other_event.set()
 
-    async def yield_for_another_task(self):
+    async def yield_for_another_task(self, awaitable: Awaitable[Any] | None = None):
         self._other_event.set()
         try:
+            if awaitable is not None:
+                await wait_for(awaitable, timeout=2)
+
             await wait_for(self._self_event.wait(), timeout=2)
         except TimeoutError:
             self.print_text("yield_to_other", "TIMEOUT")

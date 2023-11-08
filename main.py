@@ -13,6 +13,8 @@ import phantom_read_insert
 import serialization_anomaly
 import serialization_anomaly_insert
 import serialization_anomaly_update
+import serialization_anomaly_concurrent_update
+import serialization_anomaly_select_update
 
 
 def parse_args() -> argparse.Namespace:
@@ -32,6 +34,8 @@ def parse_args() -> argparse.Namespace:
             "serialization-anomaly",
             "serialization-anomaly-insert",
             "serialization-anomaly-update",
+            "serialization-anomaly-concurrent-update",
+            "serialization-anomaly-select-update",
         ]
     )
 
@@ -93,6 +97,12 @@ async def main(args: argparse.Namespace):
             case "serialization-anomaly-update":
                 t1 = serialization_anomaly_update.T1(c1, isolation_level, t1_event, t2_event)
                 t2 = serialization_anomaly_update.T2(c2, isolation_level, t2_event, t1_event)
+            case "serialization-anomaly-concurrent-update":
+                t1 = serialization_anomaly_concurrent_update.T1(c1, isolation_level, t1_event, t2_event)
+                t2 = serialization_anomaly_concurrent_update.T2(c2, isolation_level, t2_event, t1_event)
+            case "serialization-anomaly-select-update":
+                t1 = serialization_anomaly_select_update.T1(c1, isolation_level, t1_event, t2_event)
+                t2 = serialization_anomaly_select_update.T2(c2, isolation_level, t2_event, t1_event)
 
         await print_account(c1, "BEFORE")
         async with asyncio.TaskGroup() as tg:
