@@ -1,4 +1,5 @@
-from base import ConcurrentTransactionExample
+from anomaly.base import ConcurrentTransactionExample
+from anomaly import registry
 
 
 class T1(ConcurrentTransactionExample):
@@ -45,3 +46,5 @@ class T2(ConcurrentTransactionExample):
             await cursor.execute("commit;")
             self.print_text("COMMIT")
             await self.yield_for_another_task()
+
+registry.register("phantom-read-insert", T1, T2)

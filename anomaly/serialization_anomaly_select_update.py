@@ -1,4 +1,5 @@
-from base import ConcurrentTransactionExample
+from anomaly.base import ConcurrentTransactionExample
+from anomaly import registry
 
 
 class T1(ConcurrentTransactionExample):
@@ -7,17 +8,19 @@ class T1(ConcurrentTransactionExample):
         async with self.conn.cursor() as cursor:
             await self.begin_transaction_with_isolation_level(cursor)
 
-            query = "select * from account;"
+            query = "select balance from account where id = 1;"
             await cursor.execute(query)
-            self.print_query_result(query, await cursor.fetchall())
+            balances = await cursor.fetchall()
+            self.print_query_result(query, balances)
+            balance = balances[0]["balance"]
 
             await self.yield_for_another_task()
 
-            query = "update account set balance = 29 where id = 1;"
+            query = f"update account set balance = {balance} + 10 where id = 1;"
             await cursor.execute(query)
             self.print_text(query, f"MODIFIED: {cursor.rowcount}")
 
-            query = "select * from account;"
+            query = "select balance from account where id = 1;"
             await cursor.execute(query)
             self.print_query_result(query, await cursor.fetchall())
 
@@ -32,16 +35,24 @@ class T2(ConcurrentTransactionExample):
         async with self.conn.cursor() as cursor:
             await self.begin_transaction_with_isolation_level(cursor)
 
-            query = "select id, balance from account where balance > 30;"
+            query = "select balance from account where id = 1;"
             await cursor.execute(query)
-            self.print_query_result(query, await cursor.fetchall())
+            balances = await cursor.fetchall()
+            self.print_query_result(query, balances)
+            balance = balances[0]["balance"]
 
             await self.yield_for_another_task()
 
-            query = "select id, balance from account where balance > 30;"
+            query = f"update account set balance = {balance} - 33 where id = 1;"
+            await cursor.execute(query)
+            self.print_text(query, f"MODIFIED: {cursor.rowcount}")
+
+            query = "select balance from account where id = 1;"
             await cursor.execute(query)
             self.print_query_result(query, await cursor.fetchall())
 
             await cursor.execute("commit;")
             self.print_text("COMMIT")
             await self.yield_for_another_task()
+
+registry.register("serialization-anomaly-select-update", T1, T2)
