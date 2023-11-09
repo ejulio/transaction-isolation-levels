@@ -51,6 +51,7 @@ pip install -r requirements.txt
 
 Run it
 ```
+PG_CONNECTION_STRING="postgresql://postgres:a.test_password@localhost:5432/transaction_isolation_test" \
 python main.py --anomaly=non-repeatable-read -l=read-committed
 ```
 
@@ -58,3 +59,10 @@ To get all examples
 ```
 python main.py -h
 ```
+
+# TODO
+
+- [ ] Test all commands
+- [ ] Print columns
+- [ ] Print example description
+- [ ] Improve README

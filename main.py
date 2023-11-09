@@ -1,6 +1,7 @@
 import argparse
 import asyncio
 import sys
+from os import environ
 
 import psycopg
 from psycopg.rows import dict_row
@@ -56,8 +57,12 @@ async def main(args: argparse.Namespace):
 
 
 async def _connect() -> psycopg.AsyncConnection:
+    connection_string = environ.get("PG_CONNECTION_STRING")
+    if not connection_string:
+        raise RuntimeError("Missing PG_CONNECTION_STRING env")
+
     return await psycopg.AsyncConnection.connect(
-        "postgresql://postgres:a.test_password@localhost:5432/transaction_isolation_test",
+        connection_string,
         row_factory=dict_row,
         autocommit=True,
     )
