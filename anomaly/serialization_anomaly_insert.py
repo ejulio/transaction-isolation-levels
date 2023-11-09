@@ -31,9 +31,9 @@ class T1(ConcurrentTransactionExample):
                 self.print_text("COMMIT")
             except psycopg.errors.SerializationFailure as exc:
                 self.print_text(query, f"ERROR: {exc}")
+                await cursor.execute("rollback;")
+                self.print_text("ROLLBACK")
 
-            await cursor.execute("rollback;")
-            self.print_text("ROLLBACK")
             await self.yield_for_another_task()
 
 

@@ -1,5 +1,6 @@
 import argparse
 import asyncio
+import sys
 
 import psycopg
 from psycopg.rows import dict_row
@@ -81,13 +82,13 @@ async def _create_tables(conn: psycopg.AsyncConnection):
 def _get_isolation_level(isolation_level: str) -> psycopg.IsolationLevel:
     match isolation_level:
         case "read-uncommitted":
-            isolation_level = psycopg.IsolationLevel.READ_UNCOMMITTED
+            return psycopg.IsolationLevel.READ_UNCOMMITTED
         case "read-committed":
-            isolation_level = psycopg.IsolationLevel.READ_COMMITTED
+            return psycopg.IsolationLevel.READ_COMMITTED
         case "repeatable-read":
-            isolation_level = psycopg.IsolationLevel.REPEATABLE_READ
+            return psycopg.IsolationLevel.REPEATABLE_READ
         case "serializable":
-            isolation_level = psycopg.IsolationLevel.SERIALIZABLE
+            return psycopg.IsolationLevel.SERIALIZABLE
         case _:
             raise ValueError(f"Unknown isolation level {isolation_level}")
 
@@ -101,4 +102,9 @@ async def _print_account(conn: psycopg.Connection, tag: str):
 
 
 if __name__ == "__main__":
-    asyncio.run(main(_parse_args()))
+    try:
+        asyncio.run(main(_parse_args()))
+        sys.exit(0)
+    except Exception as exc:
+        print(exc)
+        sys.exit(1)

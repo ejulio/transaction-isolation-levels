@@ -1,3 +1,5 @@
+import psycopg
+
 from anomaly.base import ConcurrentTransactionExample
 from anomaly import registry
 
@@ -43,9 +45,15 @@ class T2(ConcurrentTransactionExample):
 
             await self.yield_for_another_task()
 
-            query = f"update account set balance = {balance} - 33 where id = 1;"
-            await cursor.execute(query)
-            self.print_text(query, f"MODIFIED: {cursor.rowcount}")
+            try:
+                query = f"update account set balance = {balance} - 33 where id = 1;"
+                await cursor.execute(query)
+                self.print_text(query, f"MODIFIED: {cursor.rowcount}")
+            except psycopg.errors.SerializationFailure as exc:
+                self.print_text(query, f"ERROR: {exc}")
+                await cursor.execute("rollback;")
+                self.print_text("ROLLBACK")
+                return
 
             query = "select balance from account where id = 1;"
             await cursor.execute(query)

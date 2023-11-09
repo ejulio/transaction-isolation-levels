@@ -35,4 +35,4 @@ class T2(ConcurrentTransactionExample):
             self.print_text("COMMIT")
             await self.yield_for_another_task()
 
-registry.register("non-repetable-read-snapshot", T1, T2)
+registry.register("non-repeatable-read-snapshot", T1, T2)

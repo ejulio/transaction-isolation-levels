@@ -42,6 +42,8 @@ class ConcurrentTransactionExample(ABC):
                 await cursor.execute("set transaction isolation level repeatable read")
             case IsolationLevel.SERIALIZABLE:
                 await cursor.execute("set transaction isolation level serializable")
+            case _:
+                raise ValueError(f"Unknown isolation level {self._isolation_level}.")
 
     # syncing helpers
 
