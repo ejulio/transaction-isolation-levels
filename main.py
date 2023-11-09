@@ -42,12 +42,17 @@ async def main(args: argparse.Namespace):
         await _create_tables(c1)
 
         isolation_level = _get_isolation_level(args.isolation_level)
-        (T1, T2) = registry.resolve(args.anomaly)
+        (T1, T2, description) = registry.resolve(args.anomaly)
         t1_event = asyncio.Event()
         t1_event.set()
         t2_event = asyncio.Event()
         t1 = T1(c1, isolation_level, t1_event, t2_event)
         t2 = T2(c2, isolation_level, t2_event, t1_event)
+
+        if description:
+            print(args.anomaly, ":", args.isolation_level)
+            print(description)
+            print()
 
         await _print_account(c1, "BEFORE")
         async with asyncio.TaskGroup() as tg:

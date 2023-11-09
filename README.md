@@ -63,6 +63,5 @@ python main.py -h
 # TODO
 
 - [ ] Test all commands
-- [ ] Print columns
 - [ ] Print example description
 - [ ] Improve README

@@ -35,4 +35,24 @@ class T2(ConcurrentTransactionExample):
             self.print_text("COMMIT")
             await self.yield_for_another_task()
 
-registry.register("non-repeatable-read-snapshot", T1, T2)
+registry.register("non-repeatable-read-snapshot", T1, T2, description="""
+This example is similar to `non-repetable-read`, but it is intended to show when the DB takes the snapshop for repeatable reads.
+For PostgreSQL, the value snapshot is taken on the first read (`select`), and not before `begin transaction`.
+                  
+┌────┐              ┌────┐             ┌────┐
+│ T1 │              │ T2 │             │ DB │
+└──┬─┘              └──┬─┘             └──┬─┘
+   │                   │                  │
+   ├─────────begin transaction───────────►│
+   │                   │                  │
+   │                   ├begin transaction►│
+   │                   │                  │
+   ├────────update balance───────────────►│
+   │                   │                  │
+   ├───────commit──────┼─────────────────►│
+   │                   │                  │
+   │                   ├──select balance─►│ # T2 sees the updated value, not the value before the transaction began
+   │                   │                  │
+   │                   ├────commit───────►│
+   │                   │                  │
+""")
