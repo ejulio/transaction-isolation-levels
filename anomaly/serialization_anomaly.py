@@ -48,4 +48,27 @@ class T2(ConcurrentTransactionExample):
             self.print_text("COMMIT")
             await self.yield_for_another_task()
 
-registry.register("serialization-anomaly", T1, T2)
+registry.register("serialization-anomaly", T1, T2, description="""
+This example behaves similarly to `non-repeatable-read` because T2 is just reading values, not performing any change.
+So, there's no inconsistency in the end result besides reading new/old values that is handled ny `read commited` and `repeatable read`
+isolation levels.
+
+┌────┐              ┌────┐                   ┌────┐
+│ T1 │              │ T2 │                   │ DB │
+└──┬─┘              └──┬─┘                   └──┬─┘
+   │                   │                        │
+   ├─────────select balance────────────────────►│
+   │                   │                        │
+   │                   ├──select sum(balance)──►│
+   │                   │                        │
+   ├────────update balance─────────────────────►│
+   │                   │                        │
+   ├────────select balance─────────────────────►│  T1 sees the new result set
+   │                   │                        │
+   │                   ├──select sum(balance)──►│  T2 sees the new result set depending on the isolation level
+   │                   │                        │
+   │                   ├────commit─────────────►│
+   │                   │                        │
+   ├───────commit──────┼───────────────────────►│
+   │                   │                        │
+""")

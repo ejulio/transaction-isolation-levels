@@ -28,6 +28,7 @@ class T1(ConcurrentTransactionExample):
 
             await cursor.execute("commit;")
             self.print_text("COMMIT")
+
             await self.yield_for_another_task()
 
 
@@ -63,4 +64,32 @@ class T2(ConcurrentTransactionExample):
             self.print_text("COMMIT")
             await self.yield_for_another_task()
 
-registry.register("serialization-anomaly-select-update", T1, T2)
+registry.register("serialization-anomaly-select-update", T1, T2, description="""
+In this example, there is a concurrent update between T1 and T2 on the same record that could cause an issue dedending on how the transactions
+are executed. Even though T1 commits the transaction before T2 performs the update, it still raises an error for
+`repetable read` and `serializable` isolation levels. The particular issue here is that the balance was stored in a variable and then
+used to update the row.
+
+IMPORTANT: `serialization-anomaly-update` worked properly for `read committed` isolation level, but this one shows an inconsistent balance at the end.
+
+┌────┐              ┌────┐                             ┌────┐
+│ T1 │              │ T2 │                             │ DB │
+└──┬─┘              └──┬─┘                             └──┬─┘
+   │                   │                                  │
+   ├─────────select balance──────────────────────────────►│
+   │                   │                                  │
+   │                   ├──select balance and store───────►│
+   │                   │                                  │
+   ├────────update balance───────────────────────────────►│
+   │                   │                                  │
+   ├────────select balance───────────────────────────────►│
+   │                   │                                  │
+   ├───────commit──────┼─────────────────────────────────►│
+   │                   │                                  │
+   │                   ├──update balance─────────────────►│ raises an error for `repeatable read` and `serializable`
+   │                   │                                  │
+   │                   ├──select balance─────────────────►│
+   │                   │                                  │
+   │                   ├────commit/rollback──────────────►│ results in an inconsistent balance for `read committed` and `read uncommitted`
+   │                   │                                  │
+""")

@@ -24,13 +24,10 @@ class T1(ConcurrentTransactionExample):
             await cursor.execute(query)
             self.print_query_result(query, await cursor.fetchall())
 
-            try:
-                await cursor.execute("commit;")
-                self.print_text("COMMIT")
-            except psycopg.errors.SerializationFailure as exc:
-                self.print_text(query, f"ERROR: {exc}")
-                await cursor.execute("rollback;")
-                self.print_text("ROLLBACK")
+            await cursor.execute("commit;")
+            self.print_text("COMMIT")
+
+            await self.yield_for_another_task()
 
 
 class T2(ConcurrentTransactionExample):
@@ -62,4 +59,29 @@ class T2(ConcurrentTransactionExample):
             await cursor.execute("commit;")
             self.print_text("COMMIT")
 
-registry.register("serialization-anomaly-update", T1, T2)
+registry.register("serialization-anomaly-update", T1, T2, description="""
+In this example, there is a concurrent update between T1 and T2 on the same record that could cause an issue dedending on how the transactions
+are executed. Even though T1 commits the transaction before T2 performs the update, it still raises an error for
+`repetable read` and `serializable` isolation levels.
+
+┌────┐              ┌────┐                   ┌────┐
+│ T1 │              │ T2 │                   │ DB │
+└──┬─┘              └──┬─┘                   └──┬─┘
+   │                   │                        │
+   ├─────────select balance────────────────────►│
+   │                   │                        │
+   │                   ├──select balance───────►│
+   │                   │                        │
+   ├────────update balance─────────────────────►│
+   │                   │                        │
+   ├────────select balance─────────────────────►│
+   │                   │                        │
+   ├───────commit──────┼───────────────────────►│
+   │                   │                        │
+   │                   ├──update balance───────►│ raises an error for `repeatable read` and `serializable`
+   │                   │                        │
+   │                   ├──select balance───────►│
+   │                   │                        │
+   │                   ├────commit/rollback────►│
+   │                   │                        │
+""")

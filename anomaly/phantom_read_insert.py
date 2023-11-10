@@ -47,4 +47,25 @@ class T2(ConcurrentTransactionExample):
             self.print_text("COMMIT")
             await self.yield_for_another_task()
 
-registry.register("phantom-read-insert", T1, T2)
+registry.register("phantom-read-insert", T1, T2, description="""
+This example is similar to `phantom-read`, but instead of updating a row, a new is added (the same would happend for `delete`).
+
+┌────┐              ┌────┐                         ┌────┐
+│ T1 │              │ T2 │                         │ DB │
+└──┬─┘              └──┬─┘                         └──┬─┘
+   │                   │                              │
+   ├─────────select balance──────────────────────────►│
+   │                   │                              │
+   │                   ├──select balance where───────►│
+   │                   │                              │
+   ├────────insert into account──────────────────────►│
+   │                   │                              │
+   ├────────select balance───────────────────────────►│  T1 sees the new result set
+   │                   │                              │
+   │                   ├──select balance where───────►│  T2 sees the new result set depending on the isolation level
+   │                   │                              │
+   │                   ├────commit───────────────────►│
+   │                   │                              │
+   ├───────commit──────┼─────────────────────────────►│
+   │                   │                              │
+""")

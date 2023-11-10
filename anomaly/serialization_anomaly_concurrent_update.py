@@ -62,4 +62,28 @@ class T2(ConcurrentTransactionExample):
             await cursor.execute("commit;")
             self.print_text("COMMIT")
 
-registry.register("serialization-anomaly-concurrent-update", T1, T2)
+registry.register("serialization-anomaly-concurrent-update", T1, T2, description="""
+This example is similar to `serialization-anomaly-update`, but here the updates are performed "at the same time", meaning that no transaction
+has committed the value when the other one runs an `update` too.
+
+┌────┐              ┌────┐                   ┌────┐
+│ T1 │              │ T2 │                   │ DB │
+└──┬─┘              └──┬─┘                   └──┬─┘
+   │                   │                        │
+   ├─────────select balance────────────────────►│
+   │                   │                        │
+   │                   ├──select balance───────►│
+   │                   │                        │
+   ├────────update balance─────────────────────►│
+   │                   │                        │
+   ├────────select balance─────────────────────►│
+   │                   │                        │
+   │                   ├──update balance───────►│ blocks because of the uncommitted `update` in T1
+   │                   │                        │  then fails for `serializable` and `repetable read`
+   │                   ├──select balance───────►│
+   │                   │                        │
+   │                   ├────commit/rollback────►│
+   │                   │                        │
+   ├───────commit──────┼───────────────────────►│
+   │                   │                        │
+""")

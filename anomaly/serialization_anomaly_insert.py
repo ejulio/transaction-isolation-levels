@@ -61,4 +61,29 @@ class T2(ConcurrentTransactionExample):
             self.print_text("COMMIT")
             await self.yield_for_another_task()
 
-registry.register("serialization-anomaly-insert", T1, T2)
+registry.register("serialization-anomaly-insert", T1, T2, description="""
+In this example, both T1 and T2 are inserting a new value and computing an aggregate on top of `account`. Since the end result is not guaranteed,
+the DB raises an error for `serializable`. `read committed` results in the expected outcome considering all rows and
+`repeatable read` ignores the value added in T2.
+
+┌────┐              ┌────┐                   ┌────┐
+│ T1 │              │ T2 │                   │ DB │
+└──┬─┘              └──┬─┘                   └──┬─┘
+   │                   │                        │
+   ├─────────select balance────────────────────►│
+   │                   │                        │
+   │                   ├──select sum(balance)──►│
+   │                   │                        │
+   ├────────insert into account────────────────►│
+   │                   │                        │
+   │                   ├──insert into account──►│
+   │                   │                        │
+   │                   ├──select sum(balance)──►│
+   │                   │                        │
+   │                   ├────commit─────────────►│
+   │                   │                        │
+   ├────────select sum(balance)────────────────►│ T1 fails for `serializable` isolation level
+   │                   │                        │ `repetable read` shows the result without T2 inserted value (phantom read)
+   ├───────commit/rollback─────────────────────►│ `read commiitted` shows the result with T2 inserted value
+   │                   │                        │
+""")

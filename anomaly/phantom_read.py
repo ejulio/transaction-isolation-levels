@@ -47,4 +47,26 @@ class T2(ConcurrentTransactionExample):
             self.print_text("COMMIT")
             await self.yield_for_another_task()
 
-registry.register("phantom-read", T1, T2)
+registry.register("phantom-read", T1, T2, description="""
+This example is quite similar to `non-repeatable-read`, but instead of reading an updated/outdated value,
+it is reading a different result set (different evaluation of the `where` clause).
+
+┌────┐              ┌────┐                         ┌────┐
+│ T1 │              │ T2 │                         │ DB │
+└──┬─┘              └──┬─┘                         └──┬─┘
+   │                   │                              │
+   ├─────────select balance──────────────────────────►│
+   │                   │                              │
+   │                   ├──select balance where───────►│
+   │                   │                              │
+   ├────────update balance───────────────────────────►│
+   │                   │                              │
+   ├────────select balance───────────────────────────►│  T1 sees the new result set
+   │                   │                              │
+   │                   ├──select balance where───────►│  T2 sees the new result set depending on the isolation level
+   │                   │                              │
+   │                   ├────commit───────────────────►│
+   │                   │                              │
+   ├───────commit──────┼─────────────────────────────►│
+   │                   │                              │
+""")
